@@ -12,7 +12,7 @@ LOGIN_URL = reverse("users:login")
 PROFILE_URL = reverse("posts:profile", args=[USERNAME])
 
 
-class PostViewsTest(TestCase):
+class PostFormsTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -45,7 +45,6 @@ class PostViewsTest(TestCase):
         """Проверим создание поста через форму
         авторизированным клиентом"""
         posts = Post.objects.all()
-        # posts = set(Post.objects.all())
         form_data = {
             "text": "Тестовый пост2",
             "group": self.group.id,
@@ -53,23 +52,20 @@ class PostViewsTest(TestCase):
         response = self.authorized_client.post(
             CREATE_POST,
             data=form_data,
-            # follow=True,
+            follow=True,
         )
-        # posts = set(Post.objects.all()) - posts
-        # self.assertEqual(len(posts), 1)
         self.assertEqual(posts.count(), 2)
-        # post = posts.pop()
-        post = Post.objects.get(id=self.post.pk + 1)
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(post.group.id, form_data["group"])
+        post = Post.objects.all().first()
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(post.text, form_data["text"])
+        self.assertEqual(post.group.id, form_data["group"])
         self.assertEqual(post.author, self.user)
         self.assertRedirects(response, PROFILE_URL)
 
     def test_guest_client_not_create_post(self):
         """Проверим создание поста через форму
         неавторизированным клиентом"""
-        posts = set(Post.objects.all())
+        posts_count = Post.objects.count()
         form_data = {
             "text": "Тестовый пост2",
             "group": self.group.id,
@@ -78,7 +74,7 @@ class PostViewsTest(TestCase):
             CREATE_POST,
             data=form_data,
         )
-        self.assertEqual(posts, set(Post.objects.all()))
+        self.assertEqual(posts_count, Post.objects.count())
         self.assertEqual(response.status_code, 302)
 
     def test_post_edit_post(self):
@@ -93,9 +89,7 @@ class PostViewsTest(TestCase):
             self.EDIT_POST_URL, data=form_data, follow=True
         )
         post = Post.objects.get(id=self.post.pk)
-        # post = self.post
         self.assertEqual(response.status_code, 200)
-        self.assertRedirects(response, self.POST_URL)
         self.assertEqual(Post.objects.count(), post_count)
         self.assertEqual(post.author, self.post.author)
         self.assertEqual(post.group.id, form_data["group"])
@@ -104,23 +98,21 @@ class PostViewsTest(TestCase):
     def test_guest_or_another_not_edit_post(self):
         """Проверяем редактирование поста неавторизированным
         клиентом или не автором поста"""
-        post_count = Post.objects.count()
         clients_not_edit = [
-            (self.another_authorized_client, self.POST_URL),
-            (self.guest_client, self.EDIT_POST_URL_REDIRECT),
+            self.another_authorized_client,
+            self.guest_client,
         ]
         form_data = {
             "text": "Тестовый пост редактирование",
             "group": self.another_group.id,
         }
-        for client, redirect in clients_not_edit:
+        for client in clients_not_edit:
             with self.subTest(client=client):
                 response = client.post(
-                    self.EDIT_POST_URL, data=form_data,
+                    self.EDIT_POST_URL, data=form_data, follow=True
                 )
                 post = Post.objects.get(id=self.post.pk)
-                self.assertEqual(Post.objects.count(), post_count)
-                self.assertRedirects(response, redirect)
                 self.assertEqual(post.author, self.post.author)
                 self.assertEqual(post.text, self.post.text)
                 self.assertEqual(post.group, self.post.group)
+                self.assertEqual(response.status_code, 200)

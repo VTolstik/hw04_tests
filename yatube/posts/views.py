@@ -1,4 +1,3 @@
-# Create your views here.
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Post, Group, User
 from .forms import PostForm
@@ -27,7 +26,6 @@ def group_posts(request, slug):
     context = {
         'group': group,
         'page_obj': page_obj,
-        # 'posts': posts,
         'title': title,
         'description': description,
     }
