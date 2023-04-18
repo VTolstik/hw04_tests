@@ -35,7 +35,7 @@ class PostFormsTest(TestCase):
         )
         cls.POST_URL = reverse("posts:post_detail", args=[cls.post.pk])
         cls.EDIT_POST_URL = reverse("posts:post_edit", args=[cls.post.pk])
-        cls.EDIT_POST_URL_REDIRECT = f"{LOGIN_URL}?next={cls.EDIT_POST_URL}"
+        # cls.EDIT_POST_URL_REDIRECT = f"{LOGIN_URL}?next={cls.EDIT_POST_URL}"
         cls.another_group = Group.objects.create(
             title="Тестовая группа другая",
             slug=ANOTHER_SLUG,
@@ -55,7 +55,7 @@ class PostFormsTest(TestCase):
             follow=True,
         )
         self.assertEqual(posts.count(), 2)
-        post = Post.objects.all().first()
+        post = Post.objects.first()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(post.text, form_data["text"])
         self.assertEqual(post.group.id, form_data["group"])
@@ -85,15 +85,25 @@ class PostFormsTest(TestCase):
             "text": "Тестовый пост редактирование",
             "group": self.another_group.id,
         }
+        self.assertFalse(
+            Post.objects.filter(
+                author=self.post.author,
+                text=form_data["text"],
+                group=form_data["group"],
+            )
+        )
         response = self.authorized_client.post(
             self.EDIT_POST_URL, data=form_data, follow=True
         )
-        post = Post.objects.get(id=self.post.pk)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Post.objects.count(), post_count)
-        self.assertEqual(post.author, self.post.author)
-        self.assertEqual(post.group.id, form_data["group"])
-        self.assertEqual(post.text, form_data["text"])
+        self.assertTrue(
+            Post.objects.filter(
+                author=self.post.author,
+                text=form_data["text"],
+                group=form_data["group"],
+            )
+        )
 
     def test_guest_or_another_not_edit_post(self):
         """Проверяем редактирование поста неавторизированным
